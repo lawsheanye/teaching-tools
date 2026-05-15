@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星际方块：六组巅峰对决</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        body {
+            background-color: #02020a;
+            color: #fff;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .pixel-font {
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        .tetris-grid {
+            background-image: linear-gradient(rgba(18, 16, 95, 0.2) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(18, 16, 95, 0.2) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .student-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid #333;
+            transition: all 0.2s;
+            cursor: pointer;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .card.absent {
+            background: #222;
+            color: #555;
+            border-color: #111;
+            text-decoration: line-through;
+        }
+
+        .lane {
+            flex: 1;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            transition: background 0.3s;
+        }
+
+        .lane:first-child { border-left: none; }
+
+        .lane-header {
+            padding: 10px 5px;
+            text-align: center;
+            font-size: 0.6rem;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .lane-pilot {
+            font-size: 0.6rem;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        /* 关键修改：题目区域置底，方便学生点击 */
+        .question-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end; /* 置于底部 */
+            align-items: center;
+            padding: 10px 10px 40px 10px; /* 增加底部间距 */
+        }
+
+        .option-btn {
+            width: 100%;
+            margin: 6px 0;
+            padding: 15px 2px; /* 加大高度，方便点击 */
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            transition: all 0.1s;
+        }
+
+        .option-btn:active {
+            transform: scale(0.92);
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .lane.correct-flash { background: rgba(0, 255, 0, 0.2); }
+        .lane.wrong-flash { background: rgba(255, 0, 0, 0.3); }
+
+        .timer-bar {
+            height: 12px;
+            background: #333;
+            width: 100%;
+            position: relative;
+        }
+
+        #timer-progress {
+            height: 100%;
+            background: #0f0;
+            width: 100%;
+            transition: width 1s linear;
+        }
+
+        .heart-container { font-size: 0.7rem; color: #ff2d2d; }
+
+        #lottery-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 100;
+            background: rgba(2, 2, 10, 0.98);
+            display: none; 
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lottery-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            width: 100%;
+            max-width: 800px;
+            margin: 40px 0;
+        }
+
+        .lottery-box {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        #fireworks-canvas {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 120;
+        }
+    </style>
+</head>
+<body class="tetris-grid">
+
+    <!-- 设置界面 -->
+    <div id="setup-screen" class="absolute inset-0 z-50 bg-[#050510] p-8 overflow-y-auto">
+        <h1 class="text-4xl text-center mb-4 pixel-font text-yellow-400">GALAXY PK</h1>
+        <p class="text-center text-blue-300 mb-8 font-bold">第一步：点击座号剔除缺席学生</p>
+        
+        <div class="bg-black/60 p-6 rounded-lg border-2 border-blue-900 max-w-2xl mx-auto">
+            <div id="student-list" class="student-grid mb-8"></div>
+            <button onclick="startLotteryPhase()" class="w-full py-4 bg-yellow-600 hover:bg-yellow-500 text-white font-bold text-xl rounded pixel-font transition">
+                下一步：各组抽取代表
+            </button>
+        </div>
+    </div>
+
+    <!-- 随机选人层 -->
+    <div id="lottery-overlay">
+        <h2 class="text-2xl pixel-font text-blue-400">正在挑选精英驾驶员...</h2>
+        <div id="lottery-results" class="lottery-grid"></div>
+        <button id="final-start-btn" onclick="initGame()" class="hidden px-12 py-4 bg-green-600 text-white pixel-font rounded-full animate-bounce">
+            全员就位，开启音乐！
+        </button>
+    </div>
+
+    <!-- 游戏头部 -->
+    <div id="game-header" class="hidden p-2 bg-black/80 flex flex-col">
+        <div class="flex justify-between items-center px-4 mb-2">
+            <div class="pixel-font text-blue-400 text-[10px]">MISSION STATUS: ENGAGED</div>
+            <div id="timer-text" class="pixel-font text-white">01:00</div>
+        </div>
+        <div class="timer-bar">
+            <div id="timer-progress"></div>
+        </div>
+    </div>
+
+    <!-- 六分屏赛场 -->
+    <div id="game-screen" class="hidden flex-1 flex overflow-hidden"></div>
+
+    <!-- 结算弹窗 -->
+    <canvas id="fireworks-canvas"></canvas>
+    <div id="result-screen" class="hidden absolute inset-0 z-[130] bg-black/90 flex flex-col items-center justify-center p-8 text-center">
+        <h2 class="text-5xl pixel-font text-yellow-400 mb-8">MISSION CLEAR!</h2>
+        <div id="final-ranks" class="w-full max-w-md space-y-4"></div>
+        <button onclick="location.reload()" class="mt-12 px-8 py-4 bg-blue-600 text-white pixel-font rounded">重新载入</button>
+    </div>
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let bgmOsc = null;
+
+        // 俄罗斯方块 8-bit BGM 逻辑
+        function playTetrisBGM() {
+            const melody = [
+                [659, 4], [493, 8], [523, 8], [587, 4], [523, 8], [493, 8],
+                [440, 4], [440, 8], [523, 8], [659, 4], [587, 8], [523, 8],
+                [493, 4], [493, 8], [523, 8], [587, 4], [659, 4],
+                [523, 4], [440, 4], [440, 4]
+            ];
+            
+            let noteIdx = 0;
+            function playNextNote() {
+                if (!gameActive) return;
+                const [freq, dur] = melody[noteIdx];
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + (2/dur));
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start();
+                osc.stop(audioCtx.currentTime + (2/dur));
+                
+                noteIdx = (noteIdx + 1) % melody.length;
+                setTimeout(playNextNote, (2500 / dur));
+            }
+            playNextNote();
+        }
+        
+        function playSfx(type) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'correct') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(523, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1046, audioCtx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(110, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'lottery') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(300 + Math.random()*500, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+            }
+        }
+
+        // 烟花逻辑
+        const fwCanvas = document.getElementById('fireworks-canvas');
+        const fwCtx = fwCanvas.getContext('2d');
+        let particles = [];
+        function createFirework() {
+            const x = Math.random() * fwCanvas.width;
+            const y = Math.random() * fwCanvas.height / 2;
+            const color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+            for(let i=0; i<30; i++) {
+                particles.push({
+                    x, y, 
+                    vx: (Math.random() - 0.5) * 8, 
+                    vy: (Math.random() - 0.5) * 8,
+                    life: 1, color
+                });
+            }
+        }
+        function updateFireworks() {
+            fwCtx.clearRect(0,0,fwCanvas.width, fwCanvas.height);
+            particles.forEach((p, i) => {
+                p.x += p.vx; p.y += p.vy; p.vy += 0.1; p.life -= 0.02;
+                if(p.life <= 0) particles.splice(i, 1);
+                fwCtx.fillStyle = p.color;
+                fwCtx.globalAlpha = p.life;
+                fwCtx.fillRect(p.x, p.y, 4, 4);
+            });
+            if(particles.length > 0) requestAnimationFrame(updateFireworks);
+        }
+
+        // 核心游戏逻辑
+        let timeLeft = 60;
+        let gameActive = false;
+        let students = Array.from({length: 36}, (_, i) => ({id: i + 1, absent: false}));
+        
+        const PRESET_GROUPS = [
+            { id: 0, name: '第1组', color: '#ff4d4d', members: [7, 12, 16, 22, 27, 36] },
+            { id: 1, name: '第2组', color: '#ffeb3b', members: [5, 9, 11, 19, 20, 21] },
+            { id: 2, name: '第3组', color: '#e040fb', members: [1, 6, 8, 28, 29, 34] },
+            { id: 3, name: '第4组', color: '#4caf50', members: [3, 17, 18, 25, 30, 32] },
+            { id: 4, name: '第5组', color: '#2196f3', members: [10, 13, 14, 26, 31, 35] },
+            { id: 5, name: '第6组', color: '#ff9800', members: [2, 4, 15, 23, 24, 33] }
+        ];
+
+        let groupData = PRESET_GROUPS.map(g => ({...g, score: 0, hearts: 3, pilot: '--'}));
+
+        const listEl = document.getElementById('student-list');
+        students.forEach(s => {
+            const d = document.createElement('div');
+            d.className = 'card pixel-font text-xs rounded';
+            d.innerText = s.id;
+            d.onclick = () => {
+                s.absent = !s.absent;
+                d.classList.toggle('absent');
+            };
+            listEl.appendChild(d);
+        });
+
+        async function startLotteryPhase() {
+            document.getElementById('setup-screen').style.display = 'none';
+            const overlay = document.getElementById('lottery-overlay');
+            overlay.style.display = 'flex';
+            const resultsGrid = document.getElementById('lottery-results');
+            resultsGrid.innerHTML = '';
+            
+            groupData.forEach(g => {
+                const box = document.createElement('div');
+                box.id = `box-${g.id}`;
+                box.className = 'lottery-box';
+                box.innerHTML = `<div class="text-[10px] pixel-font mb-4" style="color:${g.color}">${g.name}</div><div id="num-${g.id}" class="text-4xl pixel-font">--</div>`;
+                resultsGrid.appendChild(box);
+            });
+
+            for (let i = 0; i < groupData.length; i++) {
+                const group = groupData[i];
+                const activeMembers = group.members.filter(mid => !students.find(s => s.id === mid).absent);
+                const numDisplay = document.getElementById(`num-${group.id}`);
+                for (let j = 0; j < 12; j++) {
+                    numDisplay.innerText = activeMembers.length > 0 ? activeMembers[Math.floor(Math.random() * activeMembers.length)] : '空';
+                    playSfx('lottery');
+                    await new Promise(r => setTimeout(r, 60));
+                }
+                const finalId = activeMembers.length > 0 ? activeMembers[Math.floor(Math.random() * activeMembers.length)] : '缺席';
+                numDisplay.innerText = finalId;
+                numDisplay.style.color = group.color;
+                group.pilot = finalId;
+                playSfx('correct');
+                await new Promise(r => setTimeout(r, 150));
+            }
+            document.getElementById('final-start-btn').classList.remove('hidden');
+        }
+
+        function initGame() {
+            fwCanvas.width = window.innerWidth;
+            fwCanvas.height = window.innerHeight;
+            document.getElementById('lottery-overlay').style.display = 'none';
+            document.getElementById('game-header').classList.remove('hidden');
+            const screen = document.getElementById('game-screen');
+            screen.classList.remove('hidden');
+            screen.innerHTML = ''; 
+
+            groupData.forEach(group => {
+                const lane = document.createElement('div');
+                lane.id = `lane-${group.id}`;
+                lane.className = `lane`;
+                lane.innerHTML = `
+                    <div class="lane-header pixel-font" style="color:${group.color}">
+                        ${group.name}<br>
+                        <div class="lane-pilot mt-1">代表:${group.pilot}</div>
+                        <span id="score-${group.id}" class="text-white text-lg">0</span><br>
+                        <div id="hearts-${group.id}" class="heart-container">❤️❤️❤️</div>
+                    </div>
+                    <div class="question-area" id="area-${group.id}"></div>
+                `;
+                screen.appendChild(lane);
+                newQuestion(group.id);
+            });
+
+            gameActive = true;
+            playTetrisBGM();
+            startTimer();
+        }
+
+        function startTimer() {
+            const timerText = document.getElementById('timer-text');
+            const progress = document.getElementById('timer-progress');
+            const tick = setInterval(() => {
+                if (timeLeft <= 0) {
+                    clearInterval(tick);
+                    endGame();
+                    return;
+                }
+                timeLeft--;
+                const mins = Math.floor(timeLeft / 60);
+                const secs = timeLeft % 60;
+                timerText.innerText = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                progress.style.width = `${(timeLeft / 60) * 100}%`;
+                if (timeLeft <= 10) progress.style.background = '#f00';
+            }, 1000);
+        }
+
+        function newQuestion(groupId) {
+            const g = groupData[groupId];
+            if (g.hearts <= 0) {
+                document.getElementById(`area-${groupId}`).innerHTML = `<div class="pixel-font text-red-600 text-[10px] text-center mb-20">OUT</div>`;
+                return;
+            }
+            const n1 = Math.floor(Math.random() * 8) + 2;
+            const n2 = Math.floor(Math.random() * 8) + 2;
+            const ans = n1 * n2;
+            let opts = [ans];
+            while(opts.length < 4) {
+                let w = ans + (Math.random() > 0.5 ? 1 : -1) * (Math.floor(Math.random() * 5) + 1);
+                if (w > 0 && !opts.includes(w)) opts.push(w);
+            }
+            opts.sort(() => Math.random() - 0.5);
+            g.currentQ = { ans };
+
+            document.getElementById(`area-${groupId}`).innerHTML = `
+                <div class="pixel-font text-xl mb-4" style="color:white; text-shadow: 2px 2px #000;">${n1}×${n2}</div>
+                <div class="flex flex-col w-full">
+                    ${opts.map(opt => `<button class="option-btn pixel-font" onclick="checkAnswer(${groupId}, ${opt})">${opt}</button>`).join('')}
+                </div>
+            `;
+        }
+
+        function checkAnswer(groupId, choice) {
+            if (!gameActive) return;
+            const g = groupData[groupId];
+            const lane = document.getElementById(`lane-${groupId}`);
+            if (choice === g.currentQ.ans) {
+                g.score += 10;
+                playSfx('correct');
+                lane.classList.add('correct-flash');
+                document.getElementById(`score-${groupId}`).innerText = g.score;
+            } else {
+                g.hearts--;
+                playSfx('wrong');
+                lane.classList.add('wrong-flash');
+                const h = document.getElementById(`hearts-${groupId}`);
+                h.innerHTML = '❤️'.repeat(Math.max(0, g.hearts)) + '🖤'.repeat(Math.max(0, 3 - g.hearts));
+            }
+            setTimeout(() => {
+                lane.classList.remove('correct-flash', 'wrong-flash');
+                newQuestion(groupId);
+            }, 200);
+        }
+
+        function endGame() {
+            gameActive = false;
+            document.getElementById('result-screen').classList.remove('hidden');
+            const sorted = [...groupData].sort((a, b) => b.score - a.score);
+            document.getElementById('final-ranks').innerHTML = sorted.map((g, i) => `
+                <div class="flex justify-between items-center bg-white/10 p-4 rounded border-l-4" style="border-color:${g.color}">
+                    <span class="pixel-font text-xs">NO.${i+1} ${g.name} (${g.pilot})</span>
+                    <span class="pixel-font text-yellow-400">${g.score}</span>
+                </div>
+            `).join('');
+            
+            // 燃放烟花
+            const fireInterval = setInterval(() => {
+                if(document.getElementById('result-screen').classList.contains('hidden')) clearInterval(fireInterval);
+                createFirework();
+                if(particles.length < 100) updateFireworks();
+            }, 300);
+        }
+    </script>
+</body>
+</html>
