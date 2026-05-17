@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二年级华文生字认读大决战</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Urbanist:wght@700;900&display=swap');
+        
+        body {
+            background-color: #050505;
+            color: white;
+            font-family: 'Urbanist', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .kaiti {
+            font-family: "KaiTi", "楷体", "STKaiti", serif;
+        }
+
+        .neon-pink { color: #FF1493; text-shadow: 0 0 10px #FF1493, 0 0 20px #FF1493; }
+        .neon-blue { color: #00FFFF; text-shadow: 0 0 10px #00FFFF, 0 0 20px #00FFFF; }
+        .bg-pink-neon { background-color: #FF1493; box-shadow: 0 0 15px #FF1493; }
+        .bg-blue-neon { background-color: #00FFFF; box-shadow: 0 0 15px #00FFFF; }
+
+        .vertical-screen {
+            height: 80vh;
+            border-radius: 30px;
+            position: relative;
+            transition: all 0.3s;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        @keyframes redFlash {
+            0% { box-shadow: inset 0 0 0px transparent; }
+            50% { box-shadow: inset 0 0 150px rgba(255, 0, 0, 0.9); background: #440000; }
+            100% { box-shadow: inset 0 0 0px transparent; }
+        }
+        .flashing-red { animation: redFlash 0.3s infinite; }
+
+        .word-box {
+            font-size: 5.5rem;
+            font-weight: bold;
+            min-height: 250px; /* 增加高度确保空间 */
+            width: 90%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 40px;
+            margin: 20px 0;
+            padding: 20px;
+            text-align: center;
+            line-height: 1.2;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            /* 确保文字始终居中 */
+            word-break: break-all;
+            overflow-wrap: break-word;
+        }
+
+        .lightstick-container {
+            width: 80%;
+            height: 40px;
+            background: #111;
+            border-radius: 20px;
+            border: 3px solid #333;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .lightstick-fill {
+            height: 100%;
+            width: 0%;
+            transition: width 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .avatar-circle {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 5px solid;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            background: #000;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+
+        #unit-buttons::-webkit-scrollbar { width: 6px; }
+        #unit-buttons::-webkit-scrollbar-thumb { background: #FF1493; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div id="game-app" class="p-6 h-full flex flex-col">
+    <!-- Setup Overlay -->
+    <div id="setup-screen" class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-10">
+        <div class="mb-8 text-center">
+            <h1 class="text-7xl neon-pink font-black italic tracking-tighter uppercase">二年级华文生字认读大决战</h1>
+            <p class="text-2xl tracking-widest text-zinc-400 mt-4 kaiti">KPOP RHYTHM BATTLE</p>
+        </div>
+        
+        <div class="bg-zinc-900 p-8 rounded-3xl border-2 border-pink-500 w-full max-w-4xl shadow-[0_0_50px_rgba(255,20,147,0.2)]">
+            <h2 class="text-2xl mb-6 text-center text-zinc-300 kaiti">请老师选择教学单元：</h2>
+            <div class="grid grid-cols-3 gap-3 h-80 overflow-y-auto pr-4" id="unit-buttons">
+                <!-- JS 将在此生成完全独立的单元按钮 -->
+            </div>
+            <button id="start-btn" class="w-full mt-8 py-6 bg-pink-600 hover:bg-pink-500 rounded-full text-3xl font-bold transition-all transform hover:scale-105 shadow-[0_0_30px_rgba(219,39,119,0.6)]" onclick="initGame()">
+                开始战斗
+            </button>
+        </div>
+    </div>
+
+    <!-- UI Top -->
+    <div class="flex justify-between items-center mb-4 px-10">
+        <div class="flex items-center gap-6">
+            <div class="text-center">
+                <div class="avatar-circle border-pink-500 text-pink-500">🐱</div>
+                <span class="text-3xl font-black neon-pink">2C TEAM</span>
+            </div>
+            <div class="flex gap-2 text-4xl" id="hearts-2c"></div>
+        </div>
+        
+        <div class="text-center">
+            <div id="timer-display" class="text-8xl font-black mb-2 tabular-nums">01:00</div>
+            <div id="status-bar" class="px-8 py-2 bg-pink-900/30 text-pink-500 rounded-full border border-pink-500/50 text-sm font-bold tracking-widest uppercase">
+                Ready to Drop the Beat
+            </div>
+        </div>
+
+        <div class="flex items-center gap-6">
+            <div class="flex gap-2 text-4xl" id="hearts-2e"></div>
+            <div class="text-center">
+                <div class="avatar-circle border-cyan-500 text-cyan-500">🐘</div>
+                <span class="text-3xl font-black neon-blue">2E TEAM</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Screens -->
+    <div class="flex gap-8 flex-1">
+        <div id="screen-2c" class="vertical-screen w-1/2 bg-zinc-900/50 border-4 border-pink-600/50 shadow-lg">
+            <div class="text-pink-500 text-xl font-bold mb-2">2C HUNTER</div>
+            <!-- Word box uses flexbox to keep text centered -->
+            <div id="word-2c" class="word-box kaiti text-pink-400">?</div>
+            <div class="w-full flex flex-col items-center gap-4">
+                <div class="lightstick-container"><div id="bar-2c" class="lightstick-fill bg-pink-neon"></div></div>
+                <div class="flex gap-6">
+                    <button onclick="judge('2c', true)" class="w-24 h-24 bg-green-500 hover:bg-green-400 rounded-full text-4xl shadow-xl transition transform active:scale-90 border-4 border-green-900"><i class="fa-solid fa-check"></i></button>
+                    <button onclick="judge('2c', false)" class="w-24 h-24 bg-red-600 hover:bg-red-500 rounded-full text-4xl shadow-xl transition transform active:scale-90 border-4 border-red-900"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+        </div>
+        <div id="screen-2e" class="vertical-screen w-1/2 bg-zinc-900/50 border-4 border-cyan-600/50 shadow-lg">
+            <div class="text-cyan-500 text-xl font-bold mb-2">2E HUNTER</div>
+            <!-- Word box uses flexbox to keep text centered -->
+            <div id="word-2e" class="word-box kaiti text-cyan-400">?</div>
+            <div class="w-full flex flex-col items-center gap-4">
+                <div class="lightstick-container"><div id="bar-2e" class="lightstick-fill bg-blue-neon"></div></div>
+                <div class="flex gap-6">
+                    <button onclick="judge('2e', true)" class="w-24 h-24 bg-green-500 hover:bg-green-400 rounded-full text-4xl shadow-xl transition transform active:scale-90 border-4 border-green-900"><i class="fa-solid fa-check"></i></button>
+                    <button onclick="judge('2e', false)" class="w-24 h-24 bg-red-600 hover:bg-red-500 rounded-full text-4xl shadow-xl transition transform active:scale-90 border-4 border-red-900"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 单元列表（完全独立）
+    const allUnits = [
+        { name: "识字一", words: ["查字典", "查", "字典", "画画", "做手工", "游戏", "团", "海浪"] },
+        { name: "第一单元", words: ["书橱", "书桌", "校园", "故事", "椅子", "台灯", "万紫千红", "教室", "扑满", "笔筒", "朗朗", "列车", "世界", "看书", "读报", "感受", "泪水", "点滴", "集邮", "热闹", "活泼", "向", "奔", "蹦蹦跳跳", "牵", "嘻嘻哈哈", "一波又一波"] },
+        { name: "第二单元", words: ["美术课", "舒适", "担心", "载货", "卡车", "累困", "一轮太阳", "整幅画", "交通", "合", "温暖", "单调", "匆忙", "行人", "许多", "早晨", "花瓶", "插", "祝"] },
+        { name: "第三单元", words: ["枕头", "早餐", "忘", "迎风飘扬", "支", "往", "装", "按", "紧紧", "不理我", "钢琴", "借", "总是", "忽高忽低", "布熊", "忽快忽慢", "洋娃娃", "不倒翁", "专心"] },
+        { name: "识字二", words: ["小渔童", "渔童", "渔", "钓鱼", "鱼钩", "位"] },
+        { name: "第四单元", words: ["年画", "竹篱笆", "旁边", "龙栽", "挖", "聪明", "求", "灯笼", "提水", "结果实", "摘", "汁赞", "然后", "炒", "汤", "吃不完", "年年有余", "代表", "挂", "鱼竿", "炸", "吃年糕", "春节", "回乡", "拜年", "一定", "希望", "步步高升", "意思", "能够", "事业", "逗"] },
+        { name: "第五单元", words: ["三个好朋友", "野兔", "袋子", "围", "松鼠", "长而大", "锄头", "尖利", "堆", "神气", "枯枝", "材料", "肥料", "一些", "吸", "形状", "但是", "比较", "湿"] },
+        { name: "第六单元", words: ["橡子", "坚果", "花芽", "池塘", "遇见", "岸", "趴", "连摆", "圆滚滚", "人类", "离开", "傍晚", "讲", "从此", "捕猎", "头部", "虽然", "一遍又一遍", "森林之王", "胡乱", "须猪", "迟早", "面临灭种"] },
+        { name: "第七单元", words: ["坐椅子", "大雾", "危险", "海盗", "宽阔", "轮胎", "石子", "作战", "飞行员", "冲", "风景", "替", "一队队", "微笑", "根本", "急急地"] },
+        { name: "第八单元", words: ["外婆", "榴梿树", "懂", "陪", "各族", "民族", "风筝", "适耕庄", "长线", "抽拉", "其他", "北", "渔村", "特别", "自由自在", "愉快", "先", "与", "鲜丽", "赞赏", "之", "夕阳", "转入", "鱼虾", "称重", "到处", "汗如雨下", "丰衣足食"] },
+        { name: "识字三", words: ["欠", "吹号角", "乞", "未", "号召", "吓", "拜访", "吐", "丁", "叮", "打雷"] },
+        { name: "第九单元", words: ["一首歌", "掉", "思考", "古时候", "科学家", "庭院", "假山", "捉迷藏", "跌", "水缸", "心不慌", "脑子", "胆子壮", "得救"] },
+        { name: "第十单元", words: ["四季", "陆地", "海龟", "昆虫", "脱壳", "有趣", "图书馆", "年份", "主角", "邻居", "到底", "壶盖", "姑妈", "兔子坡", "提防", "命", "烧", "一块", "告示牌", "劳作", "杀害", "康复"] },
+        { name: "第十一单元", words: ["年纪", "见义勇为", "诗", "翻滚", "伸", "一阵子", "闪闪发光", "黄昏", "拆开", "草绳", "煮熟", "湖泊", "飘雪", "软", "非常", "淡淡的", "百读不厌", "神奇"] },
+        { name: "第十二单元", words: ["雾", "充满", "体积", "寻找", "顽皮", "暗", "无论", "植物", "红毛丹", "街道", "消失", "深紫色", "浅黄色", "躲", "芒果", "炎热", "乘凉", "绿阴", "观察"] }
+    ];
+
+    let state = {
+        selectedUnit: null,
+        timer: 60,
+        gameInterval: null,
+        scores: { '2c': 0, '2e': 0 },
+        hearts: { '2c': 5, '2e': 5 },
+        pools: { '2c': [], '2e': [] },
+        isRage: false
+    };
+
+    // 音频引擎 - Web Audio API 直接合成 KPop 鼓点
+    const AudioEngine = {
+        ctx: null,
+        beatInterval: null,
+        
+        init() {
+            if (this.ctx) return;
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        },
+
+        playKPopBeat(bpm = 126) {
+            this.init();
+            if(this.ctx.state === 'suspended') this.ctx.resume();
+            
+            const secondsPerBeat = 60.0 / bpm;
+            let nextBeatTime = this.ctx.currentTime;
+
+            this.beatInterval = setInterval(() => {
+                while (nextBeatTime < this.ctx.currentTime + 0.1) {
+                    this.scheduleBeat(nextBeatTime);
+                    nextBeatTime += secondsPerBeat;
+                }
+            }, 50);
+        },
+
+        scheduleBeat(time) {
+            // Kick Drum (低音鼓)
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain); gain.connect(this.ctx.destination);
+            osc.frequency.setValueAtTime(150, time);
+            osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.12);
+            gain.gain.setValueAtTime(0.4, time);
+            gain.gain.exponentialRampToValueAtTime(0.01, time + 0.12);
+            osc.start(time); osc.stop(time + 0.12);
+
+            // 每四拍一个 Clap
+            const beatIndex = Math.round(time * 2) % 4;
+            if (beatIndex === 0 || beatIndex === 2) {
+                const noise = this.ctx.createBufferSource();
+                const bufferSize = this.ctx.sampleRate * 0.05;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                noise.buffer = buffer;
+                const nGain = this.ctx.createGain();
+                noise.connect(nGain); nGain.connect(this.ctx.destination);
+                nGain.gain.setValueAtTime(0.08, time);
+                nGain.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+                noise.start(time);
+            }
+        },
+
+        stop() {
+            if(this.beatInterval) clearInterval(this.beatInterval);
+        },
+
+        playSFX(type) {
+            if(!this.ctx) return;
+            const now = this.ctx.currentTime;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain); gain.connect(this.ctx.destination);
+
+            if(type === 'correct') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now);
+                osc.frequency.exponentialRampToValueAtTime(1046.5, now + 0.1);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+            } else if(type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(110, now);
+                osc.frequency.linearRampToValueAtTime(55, now + 0.3);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+            }
+            osc.start(now); osc.stop(now + 1);
+        }
+    };
+
+    function initSetup() {
+        const container = document.getElementById('unit-buttons');
+        allUnits.forEach((unit, index) => {
+            const btn = document.createElement('button');
+            btn.className = "group p-4 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-lg font-bold transition border-2 border-transparent kaiti text-left flex items-center justify-between";
+            btn.innerHTML = `<span>${unit.name}</span><i class="fa-solid fa-music opacity-0 group-hover:opacity-50 text-sm"></i>`;
+            btn.onclick = () => {
+                state.selectedUnit = index;
+                Array.from(container.children).forEach(b => b.classList.remove('border-pink-500', 'bg-pink-900/40'));
+                btn.classList.add('border-pink-500', 'bg-pink-900/40');
+                AudioEngine.init();
+            };
+            container.appendChild(btn);
+        });
+    }
+
+    function initGame() {
+        if (state.selectedUnit === null) return alert("请老师先点击选择一个单元！");
+        
+        state.pools['2c'] = [...allUnits[state.selectedUnit].words].sort(() => Math.random() - 0.5);
+        state.pools['2e'] = [...allUnits[state.selectedUnit].words].sort(() => Math.random() - 0.5);
+        
+        refreshWord('2c'); refreshWord('2e');
+        document.getElementById('setup-screen').style.display = 'none';
+        renderHearts();
+        
+        AudioEngine.playKPopBeat(128);
+        document.getElementById('status-bar').innerText = `正在播放: ${allUnits[state.selectedUnit].name} 节奏`;
+        startTimer();
+    }
+
+    function startTimer() {
+        state.gameInterval = setInterval(() => {
+            state.timer--;
+            const display = document.getElementById('timer-display');
+            display.innerText = `00:${state.timer.toString().padStart(2, '0')}`;
+
+            if (state.timer === 10 && !state.isRage) {
+                state.isRage = true;
+                document.body.classList.add('flashing-red');
+                display.classList.add('text-red-500', 'animate-pulse');
+                document.getElementById('status-bar').innerText = "最后关头: 狂暴节奏！";
+                AudioEngine.stop();
+                AudioEngine.playKPopBeat(180);
+            }
+
+            if (state.timer <= 0) {
+                clearInterval(state.gameInterval);
+                AudioEngine.stop();
+                gameOver("舞台落幕！战斗结束");
+            }
+        }, 1000);
+    }
+
+    function judge(team, isCorrect) {
+        if (isCorrect) {
+            AudioEngine.playSFX('correct');
+            state.scores[team] += 10;
+            const progress = Math.min(state.scores[team], 100);
+            document.getElementById(`bar-${team}`).style.width = progress + '%';
+        } else {
+            AudioEngine.playSFX('wrong');
+            state.hearts[team]--;
+            document.getElementById(`screen-${team}`).classList.add('flashing-red');
+            setTimeout(() => document.getElementById(`screen-${team}`).classList.remove('flashing-red'), 500);
+            renderHearts();
+            if (state.hearts[team] <= 0) {
+                clearInterval(state.gameInterval);
+                AudioEngine.stop();
+                gameOver(`${team.toUpperCase()} 能量耗尽！`);
+            }
+        }
+        refreshWord(team);
+    }
+
+    function refreshWord(team) {
+        if (state.pools[team].length === 0) {
+            state.pools[team] = [...allUnits[state.selectedUnit].words].sort(() => Math.random() - 0.5);
+        }
+        document.getElementById(`word-${team}`).innerText = state.pools[team].pop();
+    }
+
+    function renderHearts() {
+        ['2c', '2e'].forEach(team => {
+            const container = document.getElementById(`hearts-${team}`);
+            container.innerHTML = '<i class="fa-solid fa-heart text-red-600 drop-shadow-[0_0_10px_rgba(220,38,38,0.6)]"></i>'.repeat(state.hearts[team]);
+        });
+    }
+
+    function gameOver(msg) {
+        const winner = state.scores['2c'] > state.scores['2e'] ? "2C 猫咪战队" : "2E 大象战队";
+        alert(`${msg}\n\n🏆 优胜者: ${winner}\n最终得分: 2C: ${state.scores['2c']} | 2E: ${state.scores['2e']}`);
+        location.reload();
+    }
+
+    initSetup();
+</script>
+
+</body>
+</html>
