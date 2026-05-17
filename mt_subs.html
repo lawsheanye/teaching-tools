@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宝可梦乘法大PK - 二年级数学</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
+
+        body {
+            font-family: 'ZCOOL KuaiLe', cursive;
+            background: #1a1a1a;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        .team-column {
+            transition: all 0.3s ease;
+            position: relative;
+            border-right: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .flash-red {
+            animation: flashRed 0.5s infinite;
+        }
+
+        @keyframes flashRed {
+            0% { background-color: rgba(255, 0, 0, 0); }
+            50% { background-color: rgba(255, 0, 0, 0.5); }
+            100% { background-color: rgba(255, 0, 0, 0); }
+        }
+
+        .answer-btn {
+            background: white;
+            border: 4px solid #333;
+            border-radius: 15px;
+            font-size: 2.2rem;
+            color: #333;
+            transition: transform 0.1s, background-color 0.1s;
+            box-shadow: 0 4px 0 #999;
+        }
+
+        .answer-btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        .interaction-area {
+            position: absolute;
+            bottom: 40px;
+            width: 100%;
+            padding: 0 15px;
+        }
+
+        .pokemon-avatar {
+            width: 110px;
+            height: 110px;
+            margin: 0 auto;
+            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.3));
+        }
+
+        .timer-bar {
+            height: 12px;
+            background: #4ade80;
+            transition: width 1s linear, background-color 0.5s;
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+        }
+
+        .overlay {
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+        }
+
+        .firework {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="text-white">
+
+    <!-- 初始设置与抽签遮罩 -->
+    <div id="setupOverlay" class="fixed inset-0 overlay flex flex-col items-center justify-center p-4">
+        <h1 class="text-5xl mb-8 text-yellow-400">⚡ 宝可梦乘法大PK ⚡</h1>
+        <div class="bg-gray-800 p-8 rounded-3xl w-full max-w-4xl shadow-2xl border-4 border-yellow-500">
+            <h2 class="text-2xl mb-4 flex items-center gap-2">
+                <span class="bg-yellow-500 text-black px-2 py-1 rounded">1</span> 
+                勾选【缺席】的学生号数
+            </h2>
+            <div id="studentList" class="grid grid-cols-9 gap-3 mb-8 max-h-72 overflow-y-auto p-4 bg-black/30 rounded-xl">
+            </div>
+            <div class="flex justify-between items-center border-t border-gray-700 pt-6">
+                <p class="text-gray-400 italic">点击黄色按钮将启动音乐引擎并进入抽签</p>
+                <button onclick="handleInitialClick()" class="bg-yellow-500 hover:bg-yellow-400 text-black px-10 py-4 rounded-full font-bold text-2xl transition-all transform hover:scale-105 active:scale-95 shadow-xl">
+                    确认名单并开启背景音乐
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 点名结果展示 -->
+    <div id="pickResultOverlay" class="fixed inset-0 overlay hidden flex flex-col items-center justify-center p-4">
+        <h1 class="text-6xl mb-12 text-blue-400 font-black tracking-widest">今日出战选手</h1>
+        <div id="selectedDisplay" class="grid grid-cols-4 gap-8 mb-16 w-full max-w-6xl"></div>
+        <button onclick="forceResumeAudio(); startGame();" class="bg-green-500 hover:bg-green-400 text-white px-16 py-6 rounded-full font-bold text-4xl shadow-2xl transition-all transform hover:scale-110 active:scale-95">
+            就绪！开始播放 BGM 开战
+        </button>
+    </div>
+
+    <!-- 游戏主界面 -->
+    <div class="flex h-screen w-screen relative">
+        <div class="fixed top-0 left-0 w-full z-50">
+            <div id="timerProgress" class="timer-bar" style="width: 100%;"></div>
+            <div class="absolute top-4 right-4 bg-black/50 px-4 py-1 rounded-full text-xl" id="timerLabel">60s</div>
+        </div>
+
+        <div id="team-0" class="team-column flex-1 flex flex-col items-center pt-16 overflow-hidden bg-yellow-500/10">
+            <div class="pokemon-avatar" id="icon-0"></div>
+            <h3 class="text-3xl font-black text-yellow-400 mt-2">皮卡丘队</h3>
+            <div class="mt-3 flex gap-2" id="hearts-0"></div>
+            <div class="text-4xl font-bold mt-4 text-yellow-200">💎 <span id="score-0">0</span></div>
+            <div class="mt-2 px-4 py-1 bg-yellow-500/20 rounded-full text-lg border border-yellow-500/30" id="player-0">选手: -</div>
+            <div class="interaction-area">
+                <div class="text-center text-5xl mb-6 font-bold bg-black/60 py-6 rounded-2xl border-2 border-yellow-500/50" id="question-0">? × ?</div>
+                <div class="grid grid-cols-2 gap-4" id="options-0"></div>
+            </div>
+        </div>
+
+        <div id="team-1" class="team-column flex-1 flex flex-col items-center pt-16 overflow-hidden bg-red-500/10">
+            <div class="pokemon-avatar" id="icon-1"></div>
+            <h3 class="text-3xl font-black text-red-400 mt-2">喷火龙队</h3>
+            <div class="mt-3 flex gap-2" id="hearts-1"></div>
+            <div class="text-4xl font-bold mt-4 text-red-200">💎 <span id="score-1">0</span></div>
+            <div class="mt-2 px-4 py-1 bg-red-500/20 rounded-full text-lg border border-red-500/30" id="player-1">选手: -</div>
+            <div class="interaction-area">
+                <div class="text-center text-5xl mb-6 font-bold bg-black/60 py-6 rounded-2xl border-2 border-red-500/50" id="question-1">? × ?</div>
+                <div class="grid grid-cols-2 gap-4" id="options-1"></div>
+            </div>
+        </div>
+
+        <div id="team-2" class="team-column flex-1 flex flex-col items-center pt-16 overflow-hidden bg-orange-500/10">
+            <div class="pokemon-avatar" id="icon-2"></div>
+            <h3 class="text-3xl font-black text-orange-400 mt-2">伊布队</h3>
+            <div class="mt-3 flex gap-2" id="hearts-2"></div>
+            <div class="text-4xl font-bold mt-4 text-orange-200">💎 <span id="score-2">0</span></div>
+            <div class="mt-2 px-4 py-1 bg-orange-500/20 rounded-full text-lg border border-orange-500/30" id="player-2">选手: -</div>
+            <div class="interaction-area">
+                <div class="text-center text-5xl mb-6 font-bold bg-black/60 py-6 rounded-2xl border-2 border-orange-500/50" id="question-2">? × ?</div>
+                <div class="grid grid-cols-2 gap-4" id="options-2"></div>
+            </div>
+        </div>
+
+        <div id="team-3" class="team-column flex-1 flex flex-col items-center pt-16 overflow-hidden bg-pink-500/10 border-r-0">
+            <div class="pokemon-avatar" id="icon-3"></div>
+            <h3 class="text-3xl font-black text-pink-400 mt-2">胖丁队</h3>
+            <div class="mt-3 flex gap-2" id="hearts-3"></div>
+            <div class="text-4xl font-bold mt-4 text-pink-200">💎 <span id="score-3">0</span></div>
+            <div class="mt-2 px-4 py-1 bg-pink-500/20 rounded-full text-lg border border-pink-500/30" id="player-3">选手: -</div>
+            <div class="interaction-area">
+                <div class="text-center text-5xl mb-6 font-bold bg-black/60 py-6 rounded-2xl border-2 border-pink-500/50" id="question-3">? × ?</div>
+                <div class="grid grid-cols-2 gap-4" id="options-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 结算 -->
+    <div id="resultOverlay" class="fixed inset-0 overlay hidden flex flex-col items-center justify-center">
+        <div id="fireworksContainer" class="absolute inset-0 pointer-events-none"></div>
+        <h1 class="text-7xl text-yellow-400 mb-12">🎊 比赛结束 🎊</h1>
+        <div id="finalScores" class="flex items-end gap-10 mb-16 h-80"></div>
+        <button onclick="location.reload()" class="bg-blue-600 hover:bg-blue-500 px-12 py-4 rounded-full text-2xl font-bold transition-transform hover:scale-110">再来一局</button>
+    </div>
+
+    <script>
+        const teams = [
+            { id: 0, name: "Pikachu", cnName: "皮卡丘队", students: [1,2,3,4,5,6,7,8,9], color: '#facc15' },
+            { id: 1, name: "Charizard", cnName: "喷火龙队", students: [10,11,12,13,14,15,16,17,18], color: '#ef4444' },
+            { id: 2, name: "Eevee", cnName: "伊布队", students: [19,20,21,22,23,24,25,26,27], color: '#f97316' },
+            { id: 3, name: "Jigglypuff", cnName: "胖丁队", students: [28,29,30,31,32,33,34,35,36], color: '#ec4899' }
+        ];
+
+        const avatarSVGs = {
+            Pikachu: `<svg viewBox="0 0 100 100"><circle cx="50" cy="55" r="35" fill="#facc15"/><path d="M25,35 L15,10 L35,25 Z" fill="#facc15" stroke="#333" stroke-width="3"/><path d="M75,35 L85,10 L65,25 Z" fill="#facc15" stroke="#333" stroke-width="3"/><circle cx="40" cy="50" r="4" fill="black"/><circle cx="60" cy="50" r="4" fill="black"/><circle cx="35" cy="65" r="6" fill="#ef4444" opacity="0.6"/><circle cx="65" cy="65" r="6" fill="#ef4444" opacity="0.6"/><path d="M45,65 Q50,70 55,65" stroke="#333" stroke-width="3" fill="none"/></svg>`,
+            Charizard: `<svg viewBox="0 0 100 100"><path d="M20,80 Q50,5 80,80" fill="#ef4444" stroke="#333" stroke-width="2"/><circle cx="50" cy="60" r="30" fill="#ef4444"/><path d="M35,35 L40,20 L50,30" fill="#ef4444"/><path d="M65,35 L60,20 L50,30" fill="#ef4444"/><circle cx="42" cy="55" r="3" fill="white"/><circle cx="58" cy="55" r="3" fill="white"/><path d="M40,70 Q50,75 60,70" stroke="white" stroke-width="2" fill="none"/></svg>`,
+            Eevee: `<svg viewBox="0 0 100 100"><circle cx="50" cy="55" r="35" fill="#f97316"/><path d="M20,30 L40,45 L30,10 Z" fill="#f97316" stroke="#333" stroke-width="2"/><path d="M80,30 L60,45 L70,10 Z" fill="#f97316" stroke="#333" stroke-width="2"/><circle cx="40" cy="55" r="5" fill="#333"/><circle cx="60" cy="55" r="5" fill="#333"/><path d="M45,70 Q50,75 55,70" stroke="#333" stroke-width="2" fill="none"/><path d="M30,85 Q50,95 70,85" stroke="white" stroke-width="8" fill="none"/></svg>`,
+            Jigglypuff: `<svg viewBox="0 0 100 100"><circle cx="50" cy="55" r="40" fill="#ec4899" stroke="#333" stroke-width="2"/><path d="M25,30 Q30,10 45,25" fill="#ec4899" stroke="#333" stroke-width="2"/><path d="M75,30 Q70,10 55,25" fill="#ec4899" stroke="#333" stroke-width="2"/><circle cx="38" cy="55" r="8" fill="white"/><circle cx="62" cy="55" r="8" fill="white"/><circle cx="38" cy="55" r="4" fill="#3b82f6"/><circle cx="62" cy="55" r="4" fill="#3b82f6"/><path d="M45,75 Q50,80 55,75" stroke="#333" stroke-width="2" fill="none"/></svg>`
+        };
+
+        // --- 核心音频系统 ---
+        let audioCtx = null;
+        let gameActive = false;
+        let timeLeft = 60;
+        let timerInterval;
+        let absentStudents = new Set();
+        let selectedPlayers = [];
+        let gameState = [
+            { score: 0, hearts: 3, currentAns: 0 },
+            { score: 0, hearts: 3, currentAns: 0 },
+            { score: 0, hearts: 3, currentAns: 0 },
+            { score: 0, hearts: 3, currentAns: 0 }
+        ];
+
+        function forceResumeAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSfx(freq, type = 'sine', duration = 0.2, volume = 0.2) {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        }
+
+        // --- 宝可梦 8-bit BGM 逻辑 ---
+        // 经典的战斗旋律音阶
+        const melody = [392, 392, 440, 392, 523.25, 493.88, 392, 392, 440, 392, 587.33, 523.25];
+        let melodyIndex = 0;
+        let bgmTimeout = null;
+
+        function playBGMStep() {
+            if (!gameActive) return;
+
+            // 基础节拍速度
+            let tempo = 1.0; 
+            if (timeLeft <= 15) tempo = 1.5; // 紧张阶段加快
+            if (timeLeft <= 5) tempo = 2.0;  // 极度紧张
+
+            // 播放旋律
+            const freq = melody[melodyIndex] * (timeLeft <= 10 ? 1.2 : 1.0); // 结尾调高音调
+            playSfx(freq, 'square', 0.15 / tempo, 0.05);
+
+            // 伴奏鼓点
+            if (melodyIndex % 4 === 0) {
+                playSfx(80, 'triangle', 0.1, 0.15); // 底鼓
+            }
+
+            // 最后5秒加入警报声
+            if (timeLeft <= 5) {
+                playSfx(1000 + Math.random() * 200, 'sine', 0.05, 0.03);
+            }
+
+            melodyIndex = (melodyIndex + 1) % melody.length;
+            bgmTimeout = setTimeout(playBGMStep, 250 / tempo);
+        }
+
+        function handleInitialClick() {
+            forceResumeAudio();
+            pickStudents();
+            playSfx(523, 'sine', 0.2, 0.1);
+        }
+
+        const studentListContainer = document.getElementById('studentList');
+        teams.forEach(team => {
+            team.students.forEach(id => {
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-center p-2 bg-gray-700 rounded-lg cursor-pointer hover:bg-yellow-600 border border-gray-600";
+                div.innerHTML = `<input type="checkbox" id="absent-${id}" class="hidden"> <label class="cursor-pointer text-lg font-bold">${id}</label>`;
+                div.onclick = () => {
+                    const input = div.querySelector('input');
+                    input.checked = !input.checked;
+                    div.classList.toggle('bg-red-900', input.checked);
+                    div.classList.toggle('opacity-50', input.checked);
+                };
+                studentListContainer.appendChild(div);
+            });
+        });
+
+        function pickStudents() {
+            absentStudents.clear();
+            teams.forEach(team => {
+                team.students.forEach(id => {
+                    if(document.getElementById(`absent-${id}`).checked) absentStudents.add(id);
+                });
+            });
+
+            let displayHtml = '';
+            teams.forEach((team, index) => {
+                const pool = team.students.filter(id => !absentStudents.has(id));
+                const picked = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : "缺席";
+                selectedPlayers[index] = picked;
+
+                displayHtml += `
+                    <div class="bg-gray-800 p-8 rounded-3xl border-b-8 shadow-2xl" style="border-color: ${team.color}">
+                        <div class="pokemon-avatar mb-4">${avatarSVGs[team.name]}</div>
+                        <div class="text-xl text-gray-400 mb-1">${team.cnName}</div>
+                        <div class="text-5xl font-black text-white">${picked}号</div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('selectedDisplay').innerHTML = displayHtml;
+            document.getElementById('setupOverlay').classList.add('hidden');
+            document.getElementById('pickResultOverlay').classList.remove('hidden');
+        }
+
+        function startGame() {
+            document.getElementById('pickResultOverlay').classList.add('hidden');
+            gameActive = true;
+            timeLeft = 60;
+            melodyIndex = 0;
+            
+            teams.forEach((team, i) => {
+                document.getElementById(`icon-${i}`).innerHTML = avatarSVGs[team.name];
+                document.getElementById(`player-${i}`).innerText = `选手: ${selectedPlayers[i]}号`;
+                gameState[i].score = 0;
+                gameState[i].hearts = 3;
+                document.getElementById(`score-${i}`).innerText = "0";
+                renderHearts(i);
+                nextQuestion(i);
+            });
+
+            playBGMStep();
+            startTimer();
+        }
+
+        function renderHearts(teamIndex) {
+            const container = document.getElementById(`hearts-${teamIndex}`);
+            container.innerHTML = '';
+            for(let i=0; i<3; i++) {
+                const heart = document.createElement('span');
+                heart.className = "text-2xl";
+                heart.innerHTML = i < gameState[teamIndex].hearts ? '❤️' : '🖤';
+                container.appendChild(heart);
+            }
+        }
+
+        function nextQuestion(teamIndex) {
+            if(gameState[teamIndex].hearts <= 0) {
+                document.getElementById(`question-${teamIndex}`).innerHTML = "<span class='text-red-500'>OUT!</span>";
+                document.getElementById(`options-${teamIndex}`).innerHTML = "";
+                return;
+            }
+
+            const a = Math.floor(Math.random() * 8) + 2; 
+            const b = Math.floor(Math.random() * 8) + 2; 
+            const ans = a * b;
+            gameState[teamIndex].currentAns = ans;
+            document.getElementById(`question-${teamIndex}`).innerText = `${a} × ${b}`;
+            
+            let opts = [ans];
+            while(opts.length < 4) {
+                const w = ans + (Math.floor(Math.random()*16) - 8);
+                if(w > 0 && !opts.includes(w)) opts.push(w);
+            }
+            opts.sort(() => Math.random() - 0.5);
+
+            const optContainer = document.getElementById(`options-${teamIndex}`);
+            optContainer.innerHTML = '';
+            opts.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "answer-btn py-6 font-black";
+                btn.innerText = opt;
+                btn.onclick = () => { forceResumeAudio(); checkAnswer(teamIndex, opt); };
+                optContainer.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(teamIndex, choice) {
+            if(!gameActive || gameState[teamIndex].hearts <= 0) return;
+
+            const col = document.getElementById(`team-${teamIndex}`);
+            if(choice === gameState[teamIndex].currentAns) {
+                gameState[teamIndex].score += 10;
+                document.getElementById(`score-${teamIndex}`).innerText = gameState[teamIndex].score;
+                playSfx(880, 'sine', 0.1, 0.3); 
+                playSfx(1320, 'sine', 0.15, 0.2);
+                nextQuestion(teamIndex);
+            } else {
+                gameState[teamIndex].hearts--;
+                renderHearts(teamIndex);
+                playSfx(110, 'sawtooth', 0.4, 0.4);
+                col.classList.add('flash-red', 'shake');
+                setTimeout(() => {
+                    col.classList.remove('flash-red', 'shake');
+                    nextQuestion(teamIndex);
+                }, 500);
+            }
+        }
+
+        function startTimer() {
+            const bar = document.getElementById('timerProgress');
+            const label = document.getElementById('timerLabel');
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                bar.style.width = (timeLeft / 60 * 100) + "%";
+                label.innerText = `${timeLeft}s`;
+                
+                // 颜色和状态变化
+                if (timeLeft <= 15) bar.style.backgroundColor = "#fbbf24";
+                if (timeLeft <= 5) bar.style.backgroundColor = "#ef4444";
+                
+                if(timeLeft <= 0) endGame();
+            }, 1000);
+        }
+
+        function createFirework(x, y) {
+            const container = document.getElementById('fireworksContainer');
+            for(let i=0; i<15; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'firework';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                particle.style.backgroundColor = `hsl(${Math.random()*360}, 100%, 50%)`;
+                const destX = (Math.random()-0.5) * 200;
+                const destY = (Math.random()-0.5) * 200;
+                particle.animate([
+                    { transform: `translate(0, 0) scale(1)`, opacity: 1 },
+                    { transform: `translate(${destX}px, ${destY}px) scale(0)`, opacity: 0 }
+                ], { duration: 800 + Math.random()*400, easing: 'ease-out' });
+                container.appendChild(particle);
+                setTimeout(() => particle.remove(), 1200);
+            }
+        }
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(timerInterval);
+            clearTimeout(bgmTimeout);
+            
+            document.getElementById('resultOverlay').classList.remove('hidden');
+            const finalScoresContainer = document.getElementById('finalScores');
+            finalScoresContainer.innerHTML = '';
+
+            const sorted = [...teams].map((t, i) => ({...t, score: gameState[i].score}))
+                            .sort((a, b) => b.score - a.score);
+
+            sorted.forEach((res, i) => {
+                const height = 30 + (sorted.length - i) * 15;
+                const div = document.createElement('div');
+                div.className = `flex flex-col items-center justify-end h-full`;
+                div.innerHTML = `
+                    <div class="mb-4 flex flex-col items-center">
+                        ${i === 0 ? '<span class="text-5xl mb-2">👑</span>' : ''}
+                        <div class="w-16 h-16">${avatarSVGs[res.name]}</div>
+                        <div class="text-xl font-bold" style="color: ${res.color}">${res.cnName}</div>
+                    </div>
+                    <div class="w-24 rounded-t-xl pt-4 font-black text-2xl shadow-lg text-center" 
+                         style="height: ${height}%; background: ${res.color}; color: rgba(0,0,0,0.7)">
+                        ${res.score}
+                    </div>
+                `;
+                finalScoresContainer.appendChild(div);
+
+                if(i === 0) {
+                    const winnerInterval = setInterval(() => {
+                        if(document.getElementById('resultOverlay').classList.contains('hidden')) {
+                            clearInterval(winnerInterval);
+                            return;
+                        }
+                        const rect = div.getBoundingClientRect();
+                        createFirework(rect.left + rect.width/2, rect.top + 50);
+                        playSfx(600 + Math.random()*600, 'sine', 0.1, 0.05);
+                    }, 600);
+                }
+            });
+            
+            // 结束长鸣
+            playSfx(261.63, 'square', 0.5, 0.2);
+            setTimeout(() => playSfx(329.63, 'square', 0.5, 0.2), 300);
+            setTimeout(() => playSfx(392, 'square', 1.0, 0.2), 600);
+        }
+    </script>
+</body>
+</html>
