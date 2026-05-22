@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>宝可梦乘法大PK - 二年级数学</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap');
+
+        body {
+            /* 优先调用您指定的 syazalina83v3 字体，并提供备用方案 */
+            font-family: 'syazalina83v3', 'ZCOOL KuaiLe', cursive, sans-serif;
+            background: #1a1a1a;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        .team-column {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            border-right: 2px solid rgba(255,255,255,0.1);
+        }
+
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
+        .flash-red {
+            animation: flashRed 0.5s infinite;
+        }
+
+        @keyframes flashRed {
+            0% { background-color: rgba(255, 0, 0, 0); }
+            50% { background-color: rgba(255, 0, 0, 0.5); }
+            100% { background-color: rgba(255, 0, 0, 0); }
+        }
+
+        /* 答题按钮：高度自适应触控 */
+        .answer-btn {
+            background: white;
+            border: 4px solid #333;
+            border-radius: 15px;
+            font-size: 1.8rem;
+            color: #333;
+            transition: transform 0.1s, background-color 0.1s;
+            box-shadow: 0 4px 0 #999;
+        }
+
+        .answer-btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        /* 宝可梦尺寸优化 */
+        .pokemon-avatar {
+            width: 85px;
+            height: 85px;
+            margin: 0 auto;
+            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.3));
+        }
+
+        .timer-bar {
+            height: 12px;
+            background: #4ade80;
+            transition: width 1s linear, background-color 0.5s;
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+        }
+
+        .overlay {
+            background: rgba(0,0,0,0.94);
+            z-index: 100;
+        }
+
+        .firework {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .pokemon-card-selected {
+            border-color: #facc15 !important;
+            background-color: rgba(250, 204, 21, 0.2) !important;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body class="text-white">
+
+    <!-- 模式选择与主入口遮罩 -->
+    <div id="modeSelectOverlay" class="fixed inset-0 overlay flex flex-col items-center justify-center p-4">
+        <h1 class="text-6xl mb-4 text-yellow-400 text-center animate-bounce font-black">⚡ 宝可梦乘法大冒险 ⚡</h1>
+        <p class="text-xl text-gray-400 mb-12">二年级乘法表趣味挑战与练习系统</p>
+        
+        <div class="flex flex-col md:flex-row gap-8 w-full max-w-4xl px-4">
+            <!-- 班级PK卡片 -->
+            <button onclick="chooseMode('class')" class="flex-1 bg-gradient-to-br from-yellow-600/30 to-yellow-800/20 p-8 rounded-3xl border-4 border-yellow-500/50 hover:border-yellow-400 hover:scale-105 transition-all text-center flex flex-col items-center shadow-2xl">
+                <span class="text-7xl mb-4">🏫</span>
+                <h2 class="text-3xl font-black text-yellow-300 mb-3">班级PK模式</h2>
+                <p class="text-gray-300 text-sm leading-relaxed">4路分屏，全班随机点名。<br>支持勾选缺席学生，适合课堂竞速大比拼！</p>
+            </button>
+
+            <!-- 个人练习卡片 -->
+            <button onclick="chooseMode('single')" class="flex-1 bg-gradient-to-br from-blue-600/30 to-blue-800/20 p-8 rounded-3xl border-4 border-blue-500/50 hover:border-blue-400 hover:scale-105 transition-all text-center flex flex-col items-center shadow-2xl">
+                <span class="text-7xl mb-4">🎒</span>
+                <h2 class="text-3xl font-black text-blue-300 mb-3">个人练习模式</h2>
+                <p class="text-gray-300 text-sm leading-relaxed">单人专属专注视角。<br>输入名字并选择你最喜爱的宝可梦出发探险！</p>
+            </button>
+        </div>
+        
+        <div class="mt-12">
+            <button onclick="toggleLeaderboard(true)" class="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-full font-bold flex items-center gap-2 text-lg shadow-lg">
+                🏆 查看历史英雄榜
+            </button>
+        </div>
+    </div>
+
+    <!-- 班级PK名单配置面罩 -->
+    <div id="setupOverlay" class="fixed inset-0 overlay hidden flex flex-col items-center justify-center p-4">
+        <h1 class="text-5xl mb-6 text-yellow-400">🏫 班级PK：配置选手名单</h1>
+        <div class="bg-gray-800 p-8 rounded-3xl w-full max-w-4xl shadow-2xl border-4 border-yellow-500 relative">
+            <button onclick="goBackToMenu()" class="absolute top-4 left-4 bg-gray-700 hover:bg-gray-600 text-white px-4 py-1 rounded-full text-sm">⬅️ 返回主页</button>
+            <h2 class="text-2xl mb-4 flex items-center gap-2 pt-4">
+                <span class="bg-yellow-500 text-black px-2 py-1 rounded">1</span> 
+                请勾选【缺席】的学生号数
+            </h2>
+            <div id="studentList" class="grid grid-cols-9 gap-3 mb-8 max-h-72 overflow-y-auto p-4 bg-black/30 rounded-xl"></div>
+            <div class="flex justify-between items-center border-t border-gray-700 pt-6">
+                <div class="flex flex-col">
+                    <p class="text-gray-400 italic">点击黄色按钮将启动音乐并随机抽取四位选手</p>
+                    <span class="text-xs text-green-400 auth-status-lbl">正在连接云端存储...</span>
+                </div>
+                <button onclick="handleInitialClick()" class="bg-yellow-500 hover:bg-yellow-400 text-black px-10 py-4 rounded-full font-bold text-2xl transition-all shadow-xl">
+                    确认名单并随机抽签
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 个人挑战面罩 -->
+    <div id="singleSetupOverlay" class="fixed inset-0 overlay hidden flex flex-col items-center justify-center p-4">
+        <h1 class="text-5xl mb-6 text-blue-400 font-black">🎒 个人冒险启动准备</h1>
+        <div class="bg-gray-800 p-8 rounded-3xl w-full max-w-3xl shadow-2xl border-4 border-blue-500 relative">
+            <button onclick="goBackToMenu()" class="absolute top-4 left-4 bg-gray-700 hover:bg-gray-600 text-white px-4 py-1 rounded-full text-sm">⬅️ 返回主页</button>
+            
+            <div class="mb-6 pt-4">
+                <label class="block text-xl text-blue-300 font-bold mb-2">① 请输入你的名字或学号：</label>
+                <input type="text" id="singlePlayerName" placeholder="例如：小明 或 7号" class="w-full bg-gray-900 border-2 border-gray-700 rounded-xl px-4 py-3 text-white text-xl focus:border-blue-400 outline-none transition-all">
+            </div>
+
+            <div class="mb-8">
+                <label class="block text-xl text-blue-300 font-bold mb-4">② 挑选你的初始宝可梦伙伴：</label>
+                <div class="grid grid-cols-4 gap-4">
+                    <div onclick="selectSingleTeam(0)" id="card-0" class="border-4 border-gray-700 bg-gray-900/50 rounded-2xl p-4 flex flex-col items-center cursor-pointer hover:border-yellow-500/50 transition-all">
+                        <div class="w-16 h-16 pointer-events-none" id="setup-avatar-0"></div>
+                        <span class="font-bold text-yellow-400 mt-2">皮卡丘</span>
+                    </div>
+                    <div onclick="selectSingleTeam(1)" id="card-1" class="border-4 border-gray-700 bg-gray-900/50 rounded-2xl p-4 flex flex-col items-center cursor-pointer hover:border-red-500/50 transition-all">
+                        <div class="w-16 h-16 pointer-events-none" id="setup-avatar-1"></div>
+                        <span class="font-bold text-red-400 mt-2">喷火龙</span>
+                    </div>
+                    <div onclick="selectSingleTeam(2)" id="card-2" class="border-4 border-gray-700 bg-gray-900/50 rounded-2xl p-4 flex flex-col items-center cursor-pointer hover:border-orange-500/50 transition-all">
+                        <div class="w-16 h-16 pointer-events-none" id="setup-avatar-2"></div>
+                        <span class="font-bold text-orange-400 mt-2">伊布</span>
+                    </div>
+                    <div onclick="selectSingleTeam(3)" id="card-3" class="border-4 border-gray-700 bg-gray-900/50 rounded-2xl p-4 flex flex-col items-center cursor-pointer hover:border-pink-500/50 transition-all">
+                        <div class="w-16 h-16 pointer-events-none" id="setup-avatar-3"></div>
+                        <span class="font-bold text-pink-400 mt-2">胖丁</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-between items-center border-t border-gray-700 pt-6">
+                <span class="text-xs text-green-400 auth-status-lbl">正在连接云端存储...</span>
+                <button onclick="startSingleAdventure()" class="bg-blue-500 hover:bg-blue-400 text-white px-10 py-4 rounded-full font-bold text-2xl transition-all shadow-xl">
+                    开始我的冒险旅程！
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 点名结果展示 -->
+    <div id="pickResultOverlay" class="fixed inset-0 overlay hidden flex flex-col items-center justify-center p-4">
+        <h1 class="text-6xl mb-12 text-blue-400 font-black tracking-widest">今日出战选手</h1>
+        <div id="selectedDisplay" class="grid grid-cols-4 gap-8 mb-16 w-full max-w-6xl"></div>
+        <button onclick="forceResumeAudio(); startGame();" class="bg-green-500 hover:bg-green-400 text-white px-16 py-6 rounded-full font-bold text-4xl shadow-2xl transition-all transform hover:scale-110 active:scale-95">
+            就绪！开始播放 BGM 开战
+        </button>
+    </div>
+
+    <!-- 历史英雄榜 -->
+    <div id="leaderboardOverlay" class="fixed inset-0 overlay hidden flex flex-col items-center justify-center p-4" style="z-index: 110;">
+        <div class="bg-gray-800 p-8 rounded-3xl w-full max-w-2xl border-4 border-blue-500 flex flex-col h-[80vh]">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-4xl text-blue-400 font-black">🏆 宝可梦历史英雄榜</h2>
+                <button onclick="toggleLeaderboard(false)" class="text-gray-400 hover:text-white text-3xl font-bold">&times;</button>
+            </div>
+            <div id="leaderboardContent" class="flex-1 overflow-y-auto pr-2 space-y-3">
+                <p class="text-center text-gray-400 mt-10">正在加载云端英雄榜...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✨ Gemini AI 魔法助记弹窗 -->
+    <div id="geminiHintOverlay" class="fixed inset-0 overlay hidden flex flex-col items-center justify-center p-4" style="z-index: 120;">
+        <div class="bg-gray-800 p-8 rounded-3xl w-full max-w-lg border-4 border-purple-500 relative flex flex-col items-center text-center">
+            <button onclick="closeGeminiHint()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-3xl font-bold">&times;</button>
+            <div class="text-6xl mb-4 animate-pulse">✨</div>
+            <h3 class="text-3xl font-black text-purple-400 mb-4" id="hintTitle">宝可梦魔法口诀</h3>
+            <div id="hintContent" class="text-xl text-gray-200 leading-relaxed min-h-[120px] max-h-[300px] overflow-y-auto w-full px-4 flex items-center justify-center"></div>
+        </div>
+    </div>
+
+    <!-- 游戏主界面 (利用 Flex Column 动态伸缩和 mt-auto，彻底断绝元素相互挤压和重叠的可能性) -->
+    <div id="gameArena" class="flex h-screen w-screen relative">
+        <div class="fixed top-0 left-0 w-full z-50">
+            <div id="timerProgress" class="timer-bar" style="width: 100%;"></div>
+            <div class="absolute top-4 right-4 bg-black/50 px-4 py-1 rounded-full text-xl" id="timerLabel">60s</div>
+        </div>
+
+        <!-- 队 1 -->
+        <div id="team-0" class="team-column flex-1 flex flex-col items-center justify-between p-3 pb-6 overflow-hidden bg-yellow-500/10">
+            <!-- 顶部固定的核心信息（自适应顶置） -->
+            <div class="flex flex-col items-center w-full space-y-1 pt-4">
+                <div class="pokemon-avatar" id="icon-0"></div>
+                <h3 class="text-xl font-black text-yellow-400" id="team-title-0">皮卡丘队</h3>
+                <div class="flex gap-1" id="hearts-0"></div>
+                <div class="text-2xl font-bold text-yellow-200">💎 <span id="score-0">0</span></div>
+                <div class="px-3 py-0.5 bg-yellow-500/20 rounded-full text-xs border border-yellow-500/30" id="player-0">选手: -</div>
+            </div>
+            <!-- 底部答题联动区（mt-auto 强力拉至最底，即使屏幕矮也绝对不会顶到文字） -->
+            <div class="w-full px-2 space-y-4 mt-auto">
+                <div class="relative text-center text-4xl font-bold bg-black/70 py-4 rounded-2xl border-2 border-yellow-500/50 shadow-inner" id="question-container-0">
+                    <span id="question-0">? × ?</span>
+                    <button onclick="getGeminiHint(0)" class="absolute -top-3 -right-2 bg-purple-600 hover:bg-purple-500 text-white rounded-full px-2.5 py-0.5 text-[10px] font-black shadow-md animate-bounce border border-purple-300">✨ 魔法口诀</button>
+                </div>
+                <div class="grid grid-cols-2 gap-3" id="options-0"></div>
+            </div>
+        </div>
+
+        <!-- 队 2 -->
+        <div id="team-1" class="team-column flex-1 flex flex-col items-center justify-between p-3 pb-6 overflow-hidden bg-red-500/10">
+            <div class="flex flex-col items-center w-full space-y-1 pt-4">
+                <div class="pokemon-avatar" id="icon-1"></div>
+                <h3 class="text-xl font-black text-red-400">喷火龙队</h3>
+                <div class="flex gap-1" id="hearts-1"></div>
+                <div class="text-2xl font-bold text-red-200">💎 <span id="score-1">0</span></div>
+                <div class="px-3 py-0.5 bg-red-500/20 rounded-full text-xs border border-red-500/30" id="player-1">选手: -</div>
+            </div>
+            <div class="w-full px-2 space-y-4 mt-auto">
+                <div class="relative text-center text-4xl font-bold bg-black/70 py-4 rounded-2xl border-2 border-red-500/50 shadow-inner" id="question-container-1">
+                    <span id="question-1">? × ?</span>
+                    <button onclick="getGeminiHint(1)" class="absolute -top-3 -right-2 bg-purple-600 hover:bg-purple-500 text-white rounded-full px-2.5 py-0.5 text-[10px] font-black shadow-md animate-bounce border border-purple-300">✨ 魔法口诀</button>
+                </div>
+                <div class="grid grid-cols-2 gap-3" id="options-1"></div>
+            </div>
+        </div>
+
+        <!-- 队 3 -->
+        <div id="team-2" class="team-column flex-1 flex flex-col items-center justify-between p-3 pb-6 overflow-hidden bg-orange-500/10">
+            <div class="flex flex-col items-center w-full space-y-1 pt-4">
+                <div class="pokemon-avatar" id="icon-2"></div>
+                <h3 class="text-xl font-black text-orange-400">伊布队</h3>
+                <div class="flex gap-1" id="hearts-2"></div>
+                <div class="text-2xl font-bold text-orange-200">💎 <span id="score-2">0</span></div>
+                <div class="px-3 py-0.5 bg-orange-500/20 rounded-full text-xs border border-orange-500/30" id="player-2">选手: -</div>
+            </div>
+            <div class="w-full px-2 space-y-4 mt-auto">
+                <div class="relative text-center text-4xl font-bold bg-black/70 py-4 rounded-2xl border-2 border-orange-500/50 shadow-inner" id="question-container-2">
+                    <span id="question-2">? × ?</span>
+                    <button onclick="getGeminiHint(2)" class="absolute -top-3 -right-2 bg-purple-600 hover:bg-purple-500 text-white rounded-full px-2.5 py-0.5 text-[10px] font-black shadow-md animate-bounce border border-purple-300">✨ 魔法口诀</button>
+                </div>
+                <div class="grid grid-cols-2 gap-3" id="options-2"></div>
+            </div>
+        </div>
+
+        <!-- 队 4 -->
+        <div id="team-3" class="team-column flex-1 flex flex-col items-center justify-between p-3 pb-6 overflow-hidden bg-pink-500/10 border-r-0">
+            <div class="flex flex-col items-center w-full space-y-1 pt-4">
+                <div class="pokemon-avatar" id="icon-3"></div>
+                <h3 class="text-xl font-black text-pink-400">胖丁队</h3>
+                <div class="flex gap-1" id="hearts-3"></div>
+                <div class="text-2xl font-bold text-pink-200">💎 <span id="score-3">0</span></div>
+                <div class="px-3 py-0.5 bg-pink-500/20 rounded-full text-xs border border-pink-500/30" id="player-3">选手: -</div>
+            </div>
+            <div class="w-full px-2 space-y-4 mt-auto">
+                <div class="relative text-center text-4xl font-bold bg-black/70 py-4 rounded-2xl border-2 border-pink-500/50 shadow-inner" id="question-container-3">
+                    <span id="question-3">? × ?</span>
+                    <button onclick="getGeminiHint(3)" class="absolute -top-3 -right-2 bg-purple-600 hover:bg-purple-500 text-white rounded-full px-2.5 py-0.5 text-[10px] font-black shadow-md animate-bounce border border-purple-300">✨ 魔法口诀</button>
+                </div>
+                <div class="grid grid-cols-2 gap-3" id="options-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 结算 -->
+    <div id="resultOverlay" class="fixed inset-0 overlay hidden flex flex-col items-center justify-center">
+        <div id="fireworksContainer" class="absolute inset-0 pointer-events-none"></div>
+        <h1 class="text-7xl text-yellow-400 mb-6">🎊 比赛结束 🎊</h1>
+        <p id="saveStatus" class="text-lg text-blue-300 mb-6 italic">正在保存本次比赛数据到云端...</p>
+        <div id="finalScores" class="flex items-end gap-10 mb-12 h-64"></div>
+        <div class="flex gap-4">
+            <button onclick="toggleLeaderboard(true)" class="bg-indigo-600 hover:bg-indigo-500 px-8 py-3 rounded-full text-xl font-bold">🏆 查看历史榜单</button>
+            <button onclick="location.reload()" class="bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-full text-xl font-bold">再来一局</button>
+        </div>
+    </div>
+
+    <!-- 系统通知 -->
+    <div id="toastNotification" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white border-2 border-yellow-500 px-6 py-3 rounded-full hidden shadow-2xl transition-all duration-300" style="z-index: 200;">提示信息</div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const teams = [
+            { id: 0, name: "Pikachu", cnName: "皮卡丘队", students: [1,2,3,4,5,6,7,8,9], color: '#facc15' },
+            { id: 1, name: "Charizard", cnName: "喷火龙队", students: [10,11,12,13,14,15,16,17,18], color: '#ef4444' },
+            { id: 2, name: "Eevee", cnName: "伊布队", students: [19,20,21,22,23,24,25,26,27], color: '#f97316' },
+            { id: 3, name: "Jigglypuff", cnName: "胖丁队", students: [28,29,30,31,32,33,34,35,36], color: '#ec4899' }
+        ];
+
+        const avatarSVGs = {
+            Pikachu: `<svg viewBox="0 0 100 100"><circle cx="50" cy="55" r="35" fill="#facc15"/><path d="M25,35 L15,10 L35,25 Z" fill="#facc15" stroke="#333" stroke-width="3"/><path d="M75,35 L85,10 L65,25 Z" fill="#facc15" stroke="#333" stroke-width="3"/><circle cx="40" cy="50" r="4" fill="black"/><circle cx="60" cy="50" r="4" fill="black"/><circle cx="35" cy="65" r="6" fill="#ef4444" opacity="0.6"/><circle cx="65" cy="65" r="6" fill="#ef4444" opacity="0.6"/><path d="M45,65 Q50,70 55,65" stroke="#333" stroke-width="3" fill="none"/></svg>`,
+            Charizard: `<svg viewBox="0 0 100 100"><path d="M20,80 Q50,5 80,80" fill="#ef4444" stroke="#333" stroke-width="2"/><circle cx="50" cy="60" r="30" fill="#ef4444"/><path d="M35,35 L40,20 L50,30" fill="#ef4444"/><path d="M65,35 L60,20 L50,30" fill="#ef4444"/><circle cx="42" cy="55" r="3" fill="white"/><circle cx="58" cy="55" r="3" fill="white"/><path d="M40,70 Q50,75 60,70" stroke="white" stroke-width="2" fill="none"/></svg>`,
+            Eevee: `<svg viewBox="0 0 100 100"><circle cx="50" cy="55" r="35" fill="#f97316"/><path d="M20,30 L40,45 L30,10 Z" fill="#f97316" stroke="#333" stroke-width="2"/><path d="M80,30 L60,45 L70,10 Z" fill="#f97316" stroke="#333" stroke-width="2"/><circle cx="40" cy="55" r="5" fill="#333"/><circle cx="60" cy="55" r="5" fill="#333"/><path d="M45,70 Q50,75 55,70" stroke="#333" stroke-width="2" fill="none"/><path d="M30,85 Q50,95 70,85" stroke="white" stroke-width="8" fill="none"/></svg>`,
+            Jigglypuff: `<svg viewBox="0 0 100 100"><circle cx="50" cy="55" r="40" fill="#ec4899" stroke="#333" stroke-width="2"/><path d="M25,30 Q30,10 45,25" fill="#ec4899" stroke="#333" stroke-width="2"/><path d="M75,30 Q70,10 55,25" fill="#ec4899" stroke="#333" stroke-width="2"/><circle cx="38" cy="55" r="8" fill="white"/><circle cx="62" cy="55" r="8" fill="white"/><circle cx="38" cy="55" r="4" fill="#3b82f6"/><circle cx="62" cy="55" r="4" fill="#3b82f6"/><path d="M45,75 Q50,80 55,75" stroke="#333" stroke-width="2" fill="none"/></svg>`
+        };
+
+        let gameMode = 'class'; 
+        let singleChosenTeam = 0; 
+        let audioCtx = null;
+        let gameActive = false;
+        let timeLeft = 60;
+        let timerInterval;
+        let absentStudents = new Set();
+        let selectedPlayers = [];
+        let gameState = [
+            { score: 0, hearts: 3, currentAns: 0, currentA: 0, currentB: 0 },
+            { score: 0, hearts: 3, currentAns: 0, currentA: 0, currentB: 0 },
+            { score: 0, hearts: 3, currentAns: 0, currentA: 0, currentB: 0 },
+            { score: 0, hearts: 3, currentAns: 0, currentA: 0, currentB: 0 }
+        ];
+
+        const apiKey = ""; 
+
+        // --- Gemini AI 魔法助记逻辑 ---
+        async function callGeminiAPI(currentA, currentB, pokemonName, promptText) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: promptText }] }],
+                systemInstruction: {
+                    parts: [{
+                        text: "你是一个温柔、极其可爱的宝可梦数学导师。你的任务是为小学二年级的小朋友用中文编一个简短有趣的乘法故事或口诀，帮他们记忆乘法算式。故事中必须包含算式的数字和指定的宝可梦。语言要极度生动、富于童趣，控制在80字以内。结尾必须大声说出答案！"
+                    }]
+                }
+            };
+
+            let retries = 5;
+            let delay = 1000;
+            while (retries > 0) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP Status ${response.status}`);
+                    const result = await response.json();
+                    return result.candidates?.[0]?.content?.parts?.[0]?.text || "哎呀，魔法断线了，再试一次吧！";
+                } catch (error) {
+                    retries--;
+                    if (retries === 0) throw new Error("连接魔法世界失败，请稍后重试！");
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; 
+                }
+            }
+        }
+
+        async function getGeminiHint(teamIndex) {
+            forceResumeAudio();
+            playSfx(600, 'sine', 0.15, 0.2);
+
+            let actualTeamIndex = (gameMode === 'single') ? singleChosenTeam : teamIndex;
+            const targetTeam = teams[actualTeamIndex];
+            const currentA = gameState[teamIndex].currentA;
+            const currentB = gameState[teamIndex].currentB;
+
+            if (!currentA || !currentB) return;
+
+            const overlay = document.getElementById('geminiHintOverlay');
+            const content = document.getElementById('hintContent');
+            const title = document.getElementById('hintTitle');
+
+            title.innerText = `✨ ${targetTeam.cnName}的魔法口诀`;
+            content.innerHTML = `
+                <div class="flex flex-col items-center gap-4">
+                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-500"></div>
+                    <p class="text-purple-300">正在用宝可梦魔法为你编织口诀...</p>
+                </div>
+            `;
+            overlay.classList.remove('hidden');
+
+            const query = `帮我写一个关于 ${targetTeam.cnName} 记忆 ${currentA} × ${currentB} = ${currentA * currentB} 的乘法口诀或极其有童趣的简短小故事吧！`;
+
+            try {
+                const hintText = await callGeminiAPI(currentA, currentB, targetTeam.cnName, query);
+                content.innerHTML = `<p class="text-white text-xl font-bold tracking-wide leading-relaxed">${hintText}</p>`;
+                playSfx(900, 'sine', 0.2, 0.1);
+            } catch (err) {
+                content.innerHTML = `<p class="text-red-400 font-bold">${err.message}</p>`;
+            }
+        }
+
+        function closeGeminiHint() {
+            document.getElementById('geminiHintOverlay').classList.add('hidden');
+        }
+
+        // --- Firebase 初始化 ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'pokemon-multiplication-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "", authDomain: "", projectId: "", storageBucket: "", messagingSenderId: "", appId: "" };
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        let currentUser = null;
+
+        const initAuth = async () => {
+            try {
+                if (initialAuthToken) { await signInWithCustomToken(auth, initialAuthToken); } 
+                else { await signInAnonymously(auth); }
+            } catch (error) {
+                document.querySelectorAll('.auth-status-lbl').forEach(el => {
+                    el.innerText = "⚠️ 离线模式 (云端存储不可用)";
+                    el.className = "text-xs text-red-400";
+                });
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                currentUser = user;
+                document.querySelectorAll('.auth-status-lbl').forEach(el => {
+                    el.innerText = "⚡ 云端已连接，可保存最佳成绩！";
+                    el.className = "text-xs text-green-400";
+                });
+            }
+        });
+
+        initAuth();
+
+        // --- 声音系统 ---
+        function forceResumeAudio() {
+            if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+            if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+        }
+
+        function playSfx(freq, type = 'sine', duration = 0.2, volume = 0.2) {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        }
+
+        const melody = [392, 392, 440, 392, 523.25, 493.88, 392, 392, 440, 392, 587.33, 523.25];
+        let melodyIndex = 0;
+        let bgmTimeout = null;
+
+        function playBGMStep() {
+            if (!gameActive) return;
+            let tempo = 1.0; 
+            if (timeLeft <= 15) tempo = 1.5; 
+            if (timeLeft <= 5) tempo = 2.0;  
+            const freq = melody[melodyIndex] * (timeLeft <= 10 ? 1.2 : 1.0); 
+            playSfx(freq, 'square', 0.15 / tempo, 0.05);
+            if (melodyIndex % 4 === 0) { playSfx(80, 'triangle', 0.1, 0.15); }
+            melodyIndex = (melodyIndex + 1) % melody.length;
+            bgmTimeout = setTimeout(playBGMStep, 250 / tempo);
+        }
+
+        // --- 模式和界面跳转控制 ---
+        function chooseMode(mode) {
+            gameMode = mode;
+            document.getElementById('modeSelectOverlay').classList.add('hidden');
+            document.getElementById('setup-avatar-0').innerHTML = avatarSVGs.Pikachu;
+            document.getElementById('setup-avatar-1').innerHTML = avatarSVGs.Charizard;
+            document.getElementById('setup-avatar-2').innerHTML = avatarSVGs.Eevee;
+            document.getElementById('setup-avatar-3').innerHTML = avatarSVGs.Jigglypuff;
+            
+            if (mode === 'class') { document.getElementById('setupOverlay').classList.remove('hidden'); } 
+            else { document.getElementById('singleSetupOverlay').classList.remove('hidden'); selectSingleTeam(0); }
+        }
+
+        function goBackToMenu() {
+            document.getElementById('setupOverlay').classList.add('hidden');
+            document.getElementById('singleSetupOverlay').classList.add('hidden');
+            document.getElementById('modeSelectOverlay').classList.remove('hidden');
+        }
+
+        function selectSingleTeam(index) {
+            singleChosenTeam = index;
+            for (let i = 0; i < 4; i++) {
+                const card = document.getElementById(`card-${i}`);
+                if (i === index) { card.classList.add('pokemon-card-selected'); } 
+                else { card.classList.remove('pokemon-card-selected'); }
+            }
+        }
+
+        function startSingleAdventure() {
+            const nameInput = document.getElementById('singlePlayerName').value.trim();
+            const playerName = nameInput || "探险家";
+            forceResumeAudio();
+            
+            gameActive = true;
+            timeLeft = 60;
+            melodyIndex = 0;
+            selectedPlayers = [playerName]; 
+
+            document.getElementById('team-1').classList.add('hidden');
+            document.getElementById('team-2').classList.add('hidden');
+            document.getElementById('team-3').classList.add('hidden');
+            
+            const mainCol = document.getElementById('team-0');
+            mainCol.className = "team-column flex-1 flex flex-col items-center justify-between p-4 max-w-xl mx-auto rounded-3xl my-4 bg-gray-800/80 border-4 border-blue-500/50 shadow-2xl relative h-[90vh]";
+
+            const pickedPartner = teams[singleChosenTeam];
+            document.getElementById('icon-0').innerHTML = avatarSVGs[pickedPartner.name];
+            document.getElementById('team-title-0').innerText = pickedPartner.cnName;
+            document.getElementById('team-title-0').style.color = pickedPartner.color;
+            document.getElementById('player-0').innerText = `冒险者: ${playerName}`;
+            
+            gameState[0].score = 0;
+            gameState[0].hearts = 3;
+            document.getElementById('score-0').innerText = "0";
+            
+            renderHearts(0);
+            nextQuestion(0);
+            document.getElementById('singleSetupOverlay').classList.add('hidden');
+            
+            playBGMStep();
+            startTimer();
+        }
+
+        function handleInitialClick() {
+            forceResumeAudio();
+            pickStudents();
+            playSfx(523, 'sine', 0.2, 0.1);
+        }
+
+        function pickStudents() {
+            absentStudents.clear();
+            teams.forEach(team => {
+                team.students.forEach(id => {
+                    if(document.getElementById(`absent-${id}`).checked) absentStudents.add(id);
+                });
+            });
+
+            let displayHtml = '';
+            teams.forEach((team, index) => {
+                const pool = team.students.filter(id => !absentStudents.has(id));
+                const picked = pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)] : "缺席";
+                selectedPlayers[index] = picked;
+
+                displayHtml += `
+                    <div class="bg-gray-800 p-8 rounded-3xl border-b-8 shadow-2xl" style="border-color: ${team.color}">
+                        <div class="pokemon-avatar mb-4">${avatarSVGs[team.name]}</div>
+                        <div class="text-xl text-gray-400 mb-1">${team.cnName}</div>
+                        <div class="text-5xl font-black text-white">${picked}号</div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('selectedDisplay').innerHTML = displayHtml;
+            document.getElementById('setupOverlay').classList.add('hidden');
+            document.getElementById('pickResultOverlay').classList.remove('hidden');
+        }
+
+        function startGame() {
+            document.getElementById('pickResultOverlay').classList.add('hidden');
+            gameActive = true;
+            timeLeft = 60;
+            melodyIndex = 0;
+            
+            document.getElementById('team-1').classList.remove('hidden');
+            document.getElementById('team-2').classList.remove('hidden');
+            document.getElementById('team-3').classList.remove('hidden');
+            document.getElementById('team-0').className = "team-column flex-1 flex flex-col items-center justify-between p-3 pb-6 overflow-hidden bg-yellow-500/10";
+            document.getElementById('team-title-0').innerText = "皮卡丘队";
+            document.getElementById('team-title-0').style.color = "#facc15";
+
+            teams.forEach((team, i) => {
+                document.getElementById(`icon-${i}`).innerHTML = avatarSVGs[team.name];
+                document.getElementById(`player-${i}`).innerText = `选手: ${selectedPlayers[i]}号`;
+                gameState[i].score = 0;
+                gameState[i].hearts = 3;
+                document.getElementById(`score-${i}`).innerText = "0";
+                renderHearts(i);
+                nextQuestion(i);
+            });
+
+            playBGMStep();
+            startTimer();
+        }
+
+        // --- 核心答题逻辑 ---
+        function renderHearts(teamIndex) {
+            const container = document.getElementById(`hearts-${teamIndex}`);
+            container.innerHTML = '';
+            for(let i=0; i<3; i++) {
+                const heart = document.createElement('span');
+                heart.className = "text-lg";
+                heart.innerHTML = i < gameState[teamIndex].hearts ? '❤️' : '🖤';
+                container.appendChild(heart);
+            }
+        }
+
+        function nextQuestion(teamIndex) {
+            if(gameState[teamIndex].hearts <= 0) {
+                document.getElementById(`question-${teamIndex}`).innerHTML = "<span class='text-red-500 block text-2xl font-black animate-pulse'>OUT!</span>";
+                document.getElementById(`options-${teamIndex}`).innerHTML = "";
+                return;
+            }
+
+            const a = Math.floor(Math.random() * 8) + 2; 
+            const b = Math.floor(Math.random() * 8) + 2; 
+            const ans = a * b;
+            gameState[teamIndex].currentAns = ans;
+            gameState[teamIndex].currentA = a;
+            gameState[teamIndex].currentB = b;
+            document.getElementById(`question-${teamIndex}`).innerText = `${a} × ${b}`;
+            
+            let opts = [ans];
+            while(opts.length < 4) {
+                const w = ans + (Math.floor(Math.random()*16) - 8);
+                if(w > 0 && !opts.includes(w)) opts.push(w);
+            }
+            opts.sort(() => Math.random() - 0.5);
+
+            const optContainer = document.getElementById(`options-${teamIndex}`);
+            optContainer.innerHTML = '';
+            opts.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "answer-btn py-4 font-black w-full";
+                btn.innerText = opt;
+                btn.onclick = () => { forceResumeAudio(); checkAnswer(teamIndex, opt); };
+                optContainer.appendChild(btn);
+            });
+        }
+
+        // 检查所有出战选手是否都已 OUT (3颗心扣完)
+        function checkAllPlayersOut() {
+            if (gameMode === 'single') {
+                return gameState[0].hearts <= 0;
+            } else {
+                // 仅针对未缺席的有效参赛选手，检查是否所有人的 hearts 都小于等于 0
+                let activePlayers = 0;
+                let deadPlayers = 0;
+                for (let i = 0; i < 4; i++) {
+                    if (selectedPlayers[i] !== "缺席" && selectedPlayers[i] !== "无可用学生") {
+                        activePlayers++;
+                        if (gameState[i].hearts <= 0) {
+                            deadPlayers++;
+                        }
+                    }
+                }
+                return activePlayers > 0 && deadPlayers === activePlayers;
+            }
+        }
+
+        function checkAnswer(teamIndex, choice) {
+            if(!gameActive || gameState[teamIndex].hearts <= 0) return;
+            const col = document.getElementById(`team-${teamIndex}`);
+            if(choice === gameState[teamIndex].currentAns) {
+                gameState[teamIndex].score += 10;
+                document.getElementById(`score-${teamIndex}`).innerText = gameState[teamIndex].score;
+                playSfx(880, 'sine', 0.1, 0.3); 
+                playSfx(1320, 'sine', 0.15, 0.2);
+                nextQuestion(teamIndex);
+            } else {
+                gameState[teamIndex].hearts--;
+                renderHearts(teamIndex);
+                playSfx(110, 'sawtooth', 0.4, 0.4);
+                col.classList.add('flash-red', 'shake');
+                
+                // 如果答错导致全员 OUT，游戏直接提前结束
+                if (checkAllPlayersOut()) {
+                    setTimeout(() => {
+                        col.classList.remove('flash-red', 'shake');
+                        endGame();
+                    }, 500);
+                    return;
+                }
+
+                setTimeout(() => {
+                    col.classList.remove('flash-red', 'shake');
+                    nextQuestion(teamIndex);
+                }, 500);
+            }
+        }
+
+        function startTimer() {
+            const bar = document.getElementById('timerProgress');
+            const label = document.getElementById('timerLabel');
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                bar.style.width = (timeLeft / 60 * 100) + "%";
+                label.innerText = `${timeLeft}s`;
+                if (timeLeft <= 15) bar.style.backgroundColor = "#fbbf24";
+                if (timeLeft <= 5) bar.style.backgroundColor = "#ef4444";
+                if(timeLeft <= 0) endGame();
+            }, 1000);
+        }
+
+        // --- 云端数据同步 ---
+        async function fetchLeaderboard() {
+            const content = document.getElementById('leaderboardContent');
+            content.innerHTML = `<div class="text-center text-gray-400 py-10">正在同步云端记录中...</div>`;
+            if (!currentUser) {
+                content.innerHTML = `<div class="text-center text-red-400 py-10">❌ 无法连接到网络。</div>`;
+                return;
+            }
+            try {
+                const scoresCol = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
+                const querySnapshot = await getDocs(scoresCol);
+                const records = [];
+                querySnapshot.forEach((doc) => { records.push(doc.data()); });
+                records.sort((a, b) => b.score - a.score);
+                const topTen = records.slice(0, 10);
+                if (topTen.length === 0) {
+                    content.innerHTML = `<div class="text-center text-gray-400 py-10">目前还没有排行榜记录。</div>`;
+                    return;
+                }
+                let html = '';
+                topTen.forEach((rec, idx) => {
+                    const badge = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}`;
+                    const rowBg = idx < 3 ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-gray-700/50 border-gray-600/30';
+                    html += `
+                        <div class="flex items-center justify-between p-4 rounded-xl border ${rowBg}">
+                            <div class="flex items-center gap-4">
+                                <span class="text-2xl w-8 text-center font-black">${badge}</span>
+                                <div class="w-10 h-10">${avatarSVGs[rec.teamName]}</div>
+                                <div>
+                                    <div class="font-bold text-lg">${rec.teamCnName}</div>
+                                    <div class="text-xs text-gray-400">${rec.studentId}</div>
+                                </div>
+                            </div>
+                            <div class="text-3xl font-black text-yellow-400">${rec.score} 💎</div>
+                        </div>
+                    `;
+                });
+                content.innerHTML = html;
+            } catch (err) {
+                content.innerHTML = `<div class="text-center text-red-400 py-10">读取云端英雄榜失败。</div>`;
+            }
+        }
+
+        function toggleLeaderboard(show) {
+            const overlay = document.getElementById('leaderboardOverlay');
+            if (show) { overlay.classList.remove('hidden'); fetchLeaderboard(); } 
+            else { overlay.classList.add('hidden'); }
+        }
+
+        async function saveScoresToFirebase() {
+            if (!currentUser) {
+                document.getElementById('saveStatus').innerText = "⚠️ 离线状态下，本次得分未保存。";
+                return;
+            }
+            try {
+                const scoresCol = collection(db, 'artifacts', appId, 'public', 'data', 'scores');
+                const promises = [];
+                if (gameMode === 'single') {
+                    promises.push(addDoc(scoresCol, { studentId: selectedPlayers[0], teamName: teams[singleChosenTeam].name, teamCnName: teams[singleChosenTeam].cnName, score: Number(gameState[0].score), timestamp: new Date().toISOString() }));
+                } else {
+                    for (let i = 0; i < 4; i++) {
+                        if (selectedPlayers[i] !== "缺席" && selectedPlayers[i] !== "无可用学生") {
+                            promises.push(addDoc(scoresCol, { studentId: selectedPlayers[i] + "号选手", teamName: teams[i].name, teamCnName: teams[i].cnName, score: Number(gameState[i].score), timestamp: new Date().toISOString() }));
+                        }
+                    }
+                }
+                await Promise.all(promises);
+                document.getElementById('saveStatus').innerText = "✅ 数据保存完毕！你真棒！";
+                showToast("🎉 历史记录已成功上传！");
+            } catch (error) {
+                document.getElementById('saveStatus').innerText = `❌ 云端储存失败。`;
+            }
+        }
+
+        // --- 初始化配置 ---
+        const studentListContainer = document.getElementById('studentList');
+        teams.forEach(team => {
+            team.students.forEach(id => {
+                const div = document.createElement('div');
+                div.className = "flex items-center justify-center p-2 bg-gray-700 rounded-lg cursor-pointer hover:bg-yellow-600 border border-gray-600 transition-all";
+                div.innerHTML = `<input type="checkbox" id="absent-${id}" class="hidden"> <label class="cursor-pointer text-lg font-bold">${id}</label>`;
+                div.onclick = () => {
+                    const input = div.querySelector('input');
+                    input.checked = !input.checked;
+                    div.classList.toggle('bg-red-900', input.checked);
+                    div.classList.toggle('opacity-50', input.checked);
+                };
+                studentListContainer.appendChild(div);
+            });
+        });
+
+        function createFirework(x, y) {
+            const container = document.getElementById('fireworksContainer');
+            for(let i=0; i<15; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'firework';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                particle.style.backgroundColor = `hsl(${Math.random()*360}, 100%, 50%)`;
+                const destX = (Math.random()-0.5) * 200;
+                const destY = (Math.random()-0.5) * 200;
+                particle.animate([
+                    { transform: `translate(0, 0) scale(1)`, opacity: 1 },
+                    { transform: `translate(${destX}px, ${destY}px) scale(0)`, opacity: 0 }
+                ], { duration: 800 + Math.random()*400, easing: 'ease-out' });
+                container.appendChild(particle);
+                setTimeout(() => particle.remove(), 1200);
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toastNotification');
+            toast.innerText = message;
+            toast.classList.remove('hidden');
+            setTimeout(() => { toast.classList.add('hidden'); }, 3000);
+        }
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(timerInterval);
+            clearTimeout(bgmTimeout);
+            document.getElementById('resultOverlay').classList.remove('hidden');
+            const finalScoresContainer = document.getElementById('finalScores');
+            finalScoresContainer.innerHTML = '';
+
+            let displayTeams = [];
+            if (gameMode === 'single') {
+                displayTeams = [{ name: teams[singleChosenTeam].name, cnName: teams[singleChosenTeam].cnName, color: teams[singleChosenTeam].color, score: gameState[0].score }];
+            } else {
+                // 过滤出未缺席有分数的队伍，并按成绩进行高低排序
+                displayTeams = teams.map((t, i) => ({...t, score: gameState[i].score}))
+                                   .filter((t, i) => selectedPlayers[i] !== "缺席" && selectedPlayers[i] !== "无可用学生")
+                                   .sort((a, b) => b.score - a.score);
+            }
+
+            // 获取全场历史/本次实际最高分数（作分母），确保柱子最高比例合理
+            const maxGameScore = displayTeams.length > 0 ? Math.max(...displayTeams.map(t => t.score)) : 10;
+
+            displayTeams.forEach((res, i) => {
+                // 重构比例高度：最高分强制为最饱满的高度（如 85%），其余选手按照比例进行缩放
+                // 即使分数较低（比如最高分10分），其对应的第一名柱状图依旧顶天，彻底杜绝无意义的超矮柱子。
+                const heightPercentage = maxGameScore > 0 ? Math.max(20, (res.score / maxGameScore) * 85) : 20;
+
+                const div = document.createElement('div');
+                div.className = `flex flex-col items-center justify-end h-full`;
+                div.innerHTML = `
+                    <div class="mb-4 flex flex-col items-center">
+                        ${i === 0 ? '<span class="text-5xl mb-2 animate-bounce">👑</span>' : ''}
+                        <div class="w-16 h-16">${avatarSVGs[res.name]}</div>
+                        <div class="text-xl font-bold" style="color: ${res.color}">${res.cnName}</div>
+                    </div>
+                    <div class="w-24 rounded-t-xl pt-4 font-black text-2xl shadow-lg text-center transition-all duration-1000" style="height: ${heightPercentage}%; background: ${res.color}; color: rgba(0,0,0,0.7)">
+                        ${res.score}
+                    </div>
+                `;
+                finalScoresContainer.appendChild(div);
+
+                if(i === 0) {
+                    const winnerInterval = setInterval(() => {
+                        if(document.getElementById('resultOverlay').classList.contains('hidden')) { clearInterval(winnerInterval); return; }
+                        const rect = div.getBoundingClientRect();
+                        createFirework(rect.left + rect.width/2, rect.top + 50);
+                    }, 600);
+                }
+            });
+            saveScoresToFirebase();
+        }
+
+        window.chooseMode = chooseMode;
+        window.goBackToMenu = goBackToMenu;
+        window.selectSingleTeam = selectSingleTeam;
+        window.startSingleAdventure = startSingleAdventure;
+        window.handleInitialClick = handleInitialClick;
+        window.forceResumeAudio = forceResumeAudio;
+        window.startGame = startGame;
+        window.toggleLeaderboard = toggleLeaderboard;
+        window.getGeminiHint = getGeminiHint;
+        window.closeGeminiHint = closeGeminiHint;
+    </script>
+</body>
+</html>
