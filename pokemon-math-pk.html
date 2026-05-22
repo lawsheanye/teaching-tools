@@ -318,9 +318,6 @@
     <div id="toastNotification" class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white border-2 border-yellow-500 px-6 py-3 rounded-full hidden shadow-2xl transition-all duration-300" style="z-index: 200;">提示信息</div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, setDoc, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const teams = [
             { id: 0, name: "Pikachu", cnName: "皮卡丘队", students: [1,2,3,4,5,6,7,8,9], color: '#facc15' },
@@ -425,40 +422,13 @@
             document.getElementById('geminiHintOverlay').classList.add('hidden');
         }
 
-        // --- Firebase 初始化 ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'pokemon-multiplication-default';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "", authDomain: "", projectId: "", storageBucket: "", messagingSenderId: "", appId: "" };
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        let currentUser = null;
-
-        const initAuth = async () => {
-            try {
-                if (initialAuthToken) { await signInWithCustomToken(auth, initialAuthToken); } 
-                else { await signInAnonymously(auth); }
-            } catch (error) {
-                document.querySelectorAll('.auth-status-lbl').forEach(el => {
-                    el.innerText = "⚠️ 离线模式 (云端存储不可用)";
-                    el.className = "text-xs text-red-400";
-                });
-            }
-        };
-
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                currentUser = user;
-                document.querySelectorAll('.auth-status-lbl').forEach(el => {
-                    el.innerText = "⚡ 云端已连接，可保存最佳成绩！";
-                    el.className = "text-xs text-green-400";
-                });
-            }
-        });
-
-        initAuth();
-
+    // ✅ 替换成这几行离线声明代码：
+let currentUser = null;
+let db = null;
+document.querySelectorAll('.auth-status-lbl').forEach(el => {
+    el.innerText = "🚀 纯离线课堂模式";
+    el.className = "text-xs text-yellow-400";
+});
         // --- 声音系统 ---
         function forceResumeAudio() {
             if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
